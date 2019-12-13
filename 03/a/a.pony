@@ -1,88 +1,80 @@
-class val Point
-  let x : U32 val
-  let y : U32 val
+use "files"
 
-  new create(x': U32, y': U32) =>
-    x = x'
-    y = y'
-
-  fun vertical_with(p2: Point) : Bool =>
-    x == p2.x
-
-  fun horizontal_with(p2: Point) : Bool =>
-    y == p2.y
-
-  fun left_of(p2: Point) : Bool =>
-    x < p2.x
-
-  fun right_of(p2: Point) : Bool =>
-    x > p2.x
-
-  fun above(p2: Point) : Bool =>
-    y > p2.y
-
-  fun below(p2: Point) : Bool =>
-    y < p2.y
-
-class Line
-  let p1 : Point
-  let p2 : Point
-
-  new create(p1': Point, p2' : Point) =>
-    // To simplify things,
-    // p1 is always the left/bottom point
-    // and p2 is always the right/top point
-    if p1'.vertical_with(p2') then
-      if p1'.y < p2'.y then
-        p1 = p1'
-        p2 = p2'
+actor Main
+  new create(env: Env) =>
+      let path = try
+        FilePath(env.root as AmbientAuth, "input.text")?
       else
-        p1 = p2'
-        p2 = p1'
+        env.out.print("No file?")
+        return
       end
-    else
-      if p1'.x < p2'.x then
-        p1 = p1'
-        p2 = p2'
-      else
-        p1 = p2'
-        p2 = p1'
+
+      let dirs = read_dirs(path)
+      let intersections = Array[Point]
+
+      try
+        let wire1 = dirs_to_lines(dirs(0)?, env)
+        let wire2 = dirs_to_lines(dirs(1)?, env)
+
+        for line1 in wire1.values() do
+          for line2 in wire2.values() do
+            if line1.intersects(line2) then
+              intersections.push(line1.intersection(line2))
+            end
+          end
+        end
+      end
+
+      var min = U32.max_value()
+
+      for i in intersections.values() do
+        env.out.print(i.string())
+        if i.distance_from_0() < min then
+          min = i.distance_from_0()
+        end
+      end
+
+      env.out.print(min.string())
+
+
+  fun read_dirs(path: FilePath) : Array[Array[String]] =>
+    let file = File.open(path)
+    let result = Array[Array[String]](2)
+    for line in FileLines(file) do
+      result.push(split_dirs(consume line))
+    end
+
+    result
+
+  fun split_dirs(input: String ref) : Array[String] =>
+    input.strip()
+    input.split_by(",")
+
+  fun dirs_to_lines(dirs: Array[String], env: Env) : Array[Line] =>
+    var x: I32 = 0
+    var y: I32 = 0
+    let a = Array[Line]
+
+    for dir in dirs.values() do
+      try
+        let step = dir.substring(1,4).i32()?
+        env.out.print(step.string())
+
+        match dir(0)?
+        | 68 => // Down
+            a.push(Line(Point(x, y), Point(x, y - step)))
+            y = y - step
+        | 85 => // Up
+            a.push(Line(Point(x, y), Point(x, y + step)))
+            y = y + step
+        | 82 => // Right
+            a.push(Line(Point(x, y), Point(x + step, y)))
+            x = x + step
+        | 76 => // Left
+            a.push(Line(Point(x, y), Point(x - step, y)))
+            x = x - step
+        end
       end
     end
 
-  fun is_vertical() : Bool =>
-    p1.vertical_with(p2)
-
-  fun is_horizontal() : Bool =>
-    p1.horizontal_with(p2)
-
-  fun intersects(line: Line) : Bool =>
-    if is_vertical() then
-      if line.is_vertical() then
-        return false
-      end
-
-      // Need to test
-      if line.p1.left_of(p1) and
-        line.p2.right_of(p1) and
-        line.p1.above(p1) and
-        line.p1.below(p2) then
-
-        return true
-      end
-
-    elseif is_horizontal() then
-      if line.is_horizontal() then
-        return false
-      end
-
-      if line.p1.below(p1) and
-        line.p2.above(p1) and
-        line.p1.right_of(p1) and
-        line.p1.left_of(p2) then
-
-        return true
-      end
-    end
-
-    false
+    a
