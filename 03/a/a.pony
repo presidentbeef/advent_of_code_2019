@@ -13,8 +13,8 @@ actor Main
       let intersections = Array[Point]
 
       try
-        let wire1 = dirs_to_lines(dirs(0)?, env)
-        let wire2 = dirs_to_lines(dirs(1)?, env)
+        let wire1 = dirs_to_lines(dirs(0)?)
+        let wire2 = dirs_to_lines(dirs(1)?)
 
         for line1 in wire1.values() do
           for line2 in wire2.values() do
@@ -28,7 +28,6 @@ actor Main
       var min = U32.max_value()
 
       for i in intersections.values() do
-        env.out.print(i.string())
         if i.distance_from_0() < min then
           min = i.distance_from_0()
         end
@@ -50,7 +49,7 @@ actor Main
     input.strip()
     input.split_by(",")
 
-  fun dirs_to_lines(dirs: Array[String], env: Env) : Array[Line] =>
+  fun dirs_to_lines(dirs: Array[String]) : Array[Line] =>
     var x: I32 = 0
     var y: I32 = 0
     let a = Array[Line]
@@ -58,7 +57,6 @@ actor Main
     for dir in dirs.values() do
       try
         let step = dir.substring(1,4).i32()?
-        env.out.print(step.string())
 
         match dir(0)?
         | 68 => // Down
