@@ -2,12 +2,12 @@ use "files"
 use "promises"
 
 actor IntcodeInterpreter
-  let _tape : Array[USize] iso
+  let _tape : Array[ISize] iso
   let _env : Env
   var _pc : USize = 0
   var _running : Bool = false
 
-  new create(tape': Array[USize] iso, env: Env) =>
+  new create(tape': Array[ISize] iso, env: Env) =>
     _tape = consume tape'
     _env = env
 
@@ -19,25 +19,27 @@ actor IntcodeInterpreter
     until not _running end
 
   fun ref execute() =>
-    let i : USize = _pc
     var step : USize = 4
 
     try
-      match _tape(i)?
+      let full_code = _tape(_pc)?
+      let op_code = full_code % 100
+
+      match op_code
       | 1 =>
-        let result = _tape(_tape(i + 1)?)? + _tape(_tape(i + 2)?)?
-        _tape.update(_tape(i + 3)?, result)?
+        let result = get_value(full_code, 1) + get_value(full_code, 2)
+        _tape.update(_tape(_pc + 3)?.usize(), result)?
       | 2 =>
-        let result = _tape(_tape(i + 1)?)? * _tape(_tape(i + 2)?)?
-        _tape.update(_tape(i + 3)?, result)?
+        let result = get_value(full_code, 1) * get_value(full_code, 2)
+        _tape.update(_tape(_pc + 3)?.usize(), result)?
       | 3 =>
         _running = false
         step = 2
-        let addr = _tape(i + 1)?
+        let addr = _tape(_pc + 1)?.usize()
         let si = recover iso SetInput(this, addr) end
         _env.input(consume si, 1)
       | 4 =>
-        let result = _tape(_tape(i + 1)?)?
+        let result = get_value(full_code, 1)
         _env.out.print(result.string())
         step = 2
       | 99 =>
@@ -51,7 +53,30 @@ actor IntcodeInterpreter
 
     _pc = _pc + step
 
-  be set_input(addr: USize, value: USize) =>
+  // Get value from tape, figuring out mode and offset
+  // pos is which operand to use
+  fun ref get_value(op_code : ISize, pos: USize) : ISize =>
+    var mode : U8 = 0
+    var result : ISize = 0
+
+    match pos
+    | 1 => mode = ((op_code / 100) % 10).u8()
+    | 2 => mode = ((op_code / 1000) % 10).u8()
+    | 3 => mode = ((op_code / 10000) % 10).u8()
+    end
+
+    try
+      match mode
+      | 0 => result = _tape(_tape(_pc + pos)?.usize())?
+      | 1 => result = _tape(_pc + pos)?
+      end
+    else
+      _running = false
+    end
+
+    result
+
+  be set_input(addr: USize, value: ISize) =>
     try
       _tape.update(addr, value)?
     else
@@ -70,7 +95,7 @@ class SetInput is InputNotify
 
   fun apply(data: Array[U8] val) =>
     try
-      _i.set_input(_addr, String.from_array(data).usize()?)
+      _i.set_input(_addr, String.from_array(data).isize()?)
     else
       _i.set_input(_addr, -1)
     end
@@ -87,18 +112,18 @@ actor Main
       env.out.print("Something went wrong")
     end
 
-  fun input_to_ints(input: Array[String]) : Array[USize] iso^ =>
-    let a : Array[USize] iso = recover iso Array[USize] end
+  fun input_to_ints(input: Array[String]) : Array[ISize] iso^ =>
+    let a : Array[ISize] iso = recover iso Array[ISize] end
 
     for value in input.values() do
       try
-        a.push(value.usize()?)
+        a.push(value.isize()?)
       end
     end
 
     consume a
 
-  fun input_to_tape(path: FilePath val) : Array[USize] iso^ =>
+  fun input_to_tape(path: FilePath val) : Array[ISize] iso^ =>
     let file = File.open(path)
     let input_string = file.read_string(10000)
     input_string.strip()
