@@ -82,6 +82,9 @@ actor Main
     r
 
   fun most_common_parent(lhs: Array[Planet], rhs: Array[Planet]) : Planet =>
+    // This is a very inefficient function.
+    // Not only does it have classic nested loops for O(n^2) but every call to depth()
+    // is also linear. So that's like O(n^3)?
     var common = Planet.parentless()
 
     for planet in lhs.values() do
