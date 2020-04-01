@@ -1,4 +1,4 @@
-# Advent of Code 2018 - In Pony
+# Advent of Code 2019 - In Pony
 
 Herein lies the dusty remains of late-night, unpolished, unpretty solutions
 to the first 9 days of [Advent of Code 2019](https://adventofcode.com/2019),
